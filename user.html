@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .alert {
+            padding: 15px;
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+            border-radius: 5px;
+        }
+        .alert-success {
+            background-color: #4CAF50; /* Green */
+            color: white;
+        }
+        .alert-error {
+            background-color: #f44336; /* Red */
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<h1>User Management</h1>
+
+<!-- Form to Add User -->
+<form id="userForm">
+    <input type="text" id="name" placeholder="Name" required />
+    <input type="text" id="phone" placeholder="Phone" required />
+    <input type="email" id="email" placeholder="Email" required />
+    <button type="submit">Add User</button>
+</form>
+
+<div id="alert" class="alert"></div>
+
+<!-- Table to Display Users -->
+<table id="userTable">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+// Function to fetch and display users
+function fetchUsers() {
+    fetch('http://localhost:3000/users') // Ensure this matches your server URL
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('userTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            data.forEach(user => {
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+                    <td>${user.name}</td>
+                    <td>${user.phone}</td>
+                    <td>${user.email}</td>
+                    <td>
+                        <button onclick="editUser('${user._id}', '${user.name}', '${user.phone}', '${user.email}')">Edit</button>
+                        <button onclick="deleteUser('${user._id}')">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        })
+        .catch(error => showAlert("Error fetching users", 'error'));
+}
+
+// Function to add a user
+document.getElementById('userForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const email = document.getElementById('email').value;
+
+    fetch('http://localhost:3000/adduser', { // Ensure this matches your server URL
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, email })
+    })
+    .then(response => response.text())
+    .then(data => {
+        showAlert(data, 'success');
+        fetchUsers(); // Refresh the user list
+        document.getElementById('userForm').reset(); // Reset form fields
+    })
+    .catch(error => showAlert("Error creating user", 'error'));
+});
+
+// Function to delete a user
+function deleteUser(id) {
+    fetch(`http://localhost:3000/users/${id}`, { method: 'DELETE' }) // Ensure this matches your server URL
+        .then(response => response.text())
+        .then(data => {
+            showAlert(data, 'success');
+            fetchUsers(); // Refresh the user list
+        })
+        .catch(error => showAlert("Error deleting user", 'error'));
+}
+
+// Function to edit a user
+function editUser(id, name, phone, email) {
+    document.getElementById('name').value = name;
+    document.getElementById('phone').value = phone;
+    document.getElementById('email').value = email;
+
+    // Change the submit button behavior to update the user
+    const form = document.getElementById('userForm');
+    
+    form.onsubmit = function(event) {
+        event.preventDefault();
+        
+        fetch(`http://localhost:3000/users/${id}`, { // Ensure this matches your server URL
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            showAlert("User updated successfully", 'success');
+            fetchUsers(); // Refresh the user list
+            form.reset(); // Reset form fields
+            form.onsubmit = addUser; // Reset the form's submit behavior
+        })
+        .catch(error => showAlert("Error updating user", 'error'));
+    };
+}
+
+// Function to show alerts
+function showAlert(message, type) {
+    const alertBox = document.getElementById('alert');
+    alertBox.textContent = message;
+    alertBox.className = 'alert alert-' + type;
+    alertBox.style.display = 'block'; // Show the alert box
+
+    // Hide the alert after 3 seconds
+    setTimeout(() => {
+        alertBox.style.display = 'none';
+    }, 3000);
+}
+
+// Fetch users on page load
+fetchUsers();
+</script>
+
+</body>
+</html>
